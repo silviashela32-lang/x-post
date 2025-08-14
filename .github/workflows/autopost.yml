@@ -2,9 +2,10 @@ name: Automatic Post to X.com
 
 on:
   schedule:
-    # Menjalankan setiap jam antara jam 9 pagi dan 3 sore (15:00) UTC setiap hari.
-    # GitHub Actions akan memilih salah satu waktu ini secara acak untuk menjalankan job.
-    - cron: '0 9-15 * * *'
+    # Menjalankan skrip satu kali setiap hari pada pukul 17:05 UTC.
+    # Ini setara dengan sekitar jam 1:05 PM ET (waktu Amerika Timur), 
+    # yang merupakan waktu puncak keterlibatan pengguna di X.com.
+    - cron: '5 17 * * *'
   workflow_dispatch: # Tombol untuk menjalankan manual
 
 jobs:
