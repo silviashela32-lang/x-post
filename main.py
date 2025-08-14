@@ -6,30 +6,37 @@ import google.generativeai as genai
 import tweepy
 import urllib.parse
 
-# --- FUNGSI UNTUK SCRAPING ---
-def scrape_trends_from_trends24():
-    """Mengambil 4 tren teratas dari trends24.in untuk United States."""
-    url = "https://trends24.in/united-states/"
+# --- FUNGSI UNTUK SCRAPING (DIPERBARUI) ---
+def scrape_trends_from_getdaytrends():
+    """Mengambil 10 tren teratas dari getdaytrends.com untuk United States."""
+    # URL diubah ke sumber yang baru
+    url = "https://getdaytrends.com/united-states/"
     try:
         response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        trend_list = soup.select('ol.trend-card__list li a')
+        # Selector diubah untuk menyesuaikan dengan struktur HTML getdaytrends.com
+        # Website ini menggunakan tabel untuk menampilkan tren
+        trend_list = soup.select('table.table-hover td a')
         
-        trends = [trend.text.strip().replace('#', '') for trend in trend_list[:4]]
+        # Mengambil 10 tren teratas
+        trends = [trend.text.strip().replace('#', '') for trend in trend_list[:10]]
         
         if not trends:
             print("Peringatan: Tidak ada tren yang ditemukan. Mungkin struktur website berubah.")
             return None
             
-        print(f"Tren yang ditemukan: {trends}")
-        return trends
+        # Langsung memilih satu tren secara acak dari 10 teratas
+        selected_trend = random.choice(trends)
+        print(f"Ditemukan {len(trends)} tren, memilih satu secara acak: {selected_trend}")
+        return selected_trend
+
     except requests.exceptions.RequestException as e:
-        print(f"Error saat mengakses trends24.in: {e}")
+        print(f"Error saat mengakses getdaytrends.com: {e}")
         return None
 
-# --- FUNGSI UNTUK GENERASI KONTEN (DIPERBAIKI) ---
+# --- FUNGSI UNTUK GENERASI KONTEN ---
 def generate_post_with_gemini(trend):
     """Membuat konten post dengan Gemini API berdasarkan satu tren."""
     gemini_api_key = os.getenv('GEMINI_API_KEY')
@@ -39,12 +46,9 @@ def generate_post_with_gemini(trend):
     genai.configure(api_key=gemini_api_key)
     model = genai.GenerativeModel('gemini-1.5-flash-latest')
     
-    # --- PERUBAHAN DI SINI ---
-    # Prompt diubah agar AI fokus membuat teks saja, tanpa perlu memikirkan link.
     prompt = (
-        f"You are a social media expert creating a post for X.com. "
-        f"Write a short and engaging post in English about this topic: '{trend}'. "
-        f"The post should have a strong Call to Action to encourage clicks on a link that will be added later. "
+        f"You are a social media expert. Write a short, engaging post in English about this topic: '{trend}'. "
+        f"The post MUST have a strong Call to Action to encourage clicks. "
         f"Do NOT add any links or hashtags in your response. Just provide the main text."
     )
     
@@ -114,36 +118,29 @@ def post_to_x(text_to_post, image_url=None):
 if __name__ == "__main__":
     print("Memulai proses auto-posting...")
     
-    top_trends = scrape_trends_from_trends24()
+    # Memanggil fungsi scrape yang baru
+    selected_trend = scrape_trends_from_getdaytrends()
     
-    if top_trends:
-        selected_trend = random.choice(top_trends)
-        print(f"Tren yang dipilih untuk konten: {selected_trend}")
-        
+    if selected_trend:
         random_link = get_random_link()
         
         if random_link:
-            # Panggil Gemini untuk membuat teks saja, tanpa menyertakan link
             gemini_text = generate_post_with_gemini(selected_trend)
             
             if gemini_text:
                 print(f"Teks dari Gemini: {gemini_text}")
 
-                hashtags_string = f"#{selected_trend.replace(' ', '')}"
-                print(f"Hashtag yang dibuat: {hashtags_string}")
-                
                 image_url = f"https://tse1.mm.bing.net/th?q={urllib.parse.quote(selected_trend)}"
                 print(f"URL Gambar: {image_url}")
 
-                # --- PERUBAHAN DI SINI ---
-                # Gabungkan teks dari AI, link acak, dan hashtag secara manual.
-                # Ini memastikan semua elemen PASTI ada di post akhir.
-                final_post = f"{gemini_text}\n\n{random_link}\n\n{hashtags_string}"
+                # Gabungkan teks dan link dengan spasi, tanpa enter dan tanpa hashtag
+                final_post_text = f"{gemini_text} {random_link}"
                 
                 print("--- POSTINGAN FINAL ---")
-                print(final_post)
+                print(f"Teks: {final_post_text}")
                 print("-----------------------")
                 
-                post_to_x(final_post, image_url)
+                # Kirim teks gabungan dan URL gambar ke fungsi posting
+                post_to_x(final_post_text, image_url)
     
     print("Proses selesai.")
